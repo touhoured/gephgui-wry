@@ -97,5 +97,5 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
 #           tag_name: ${{ env.tag }}
-          tag_name: ${{ steps.current-time.outputs.formattedTime }}
+          tag_name: archive-${{ steps.current-time.outputs.formattedTime }}
           files: ${{ matrix.bin }}-${{ matrix.target }}.7z
