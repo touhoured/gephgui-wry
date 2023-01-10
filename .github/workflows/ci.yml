@@ -41,6 +41,7 @@ jobs:
         with:
           repository: geph-official/gephgui-wry
           fetch-depth: 0
+          submodules: true
       - name: Reset latest tag
         run: git reset --hard $(git rev-list --all --max-count=1)
       - name: Reset to input ref
