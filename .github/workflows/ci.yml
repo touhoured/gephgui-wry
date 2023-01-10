@@ -11,6 +11,7 @@ on:
         type: string
 env:
   CARGO_TERM_COLOR: always
+  PKG_CONFIG_SYSROOT_DIR: /
 permissions:
   contents: write
 
