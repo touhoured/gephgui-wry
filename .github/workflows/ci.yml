@@ -70,6 +70,8 @@ jobs:
         run: |
           npm install
           npm run build
+      - name: set ndk
+        run: echo "$ANDROID_NDK/build/core/toolchains/" >> $GITHUB_PATH
       - name: Cargo build
         if: matrix.use-cross != true
         run: cargo build --target ${{ matrix.target }} --release --locked
