@@ -101,7 +101,7 @@ jobs:
           artifacts: ${{ matrix.bin }}-${{ matrix.target }}.7z
           allowUpdates: true
       # - name: Releases
-      #   uses: softprops/action-gh-release@v1
-      #   with:
-      #     tag_name: archive-${{ steps.current-time.outputs.formattedTime }}
-      #     files: ${{ matrix.bin }}-${{ matrix.target }}.7z
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: archive-${{ steps.date.outputs.date }}
+          files: ${{ matrix.bin }}-${{ matrix.target }}.7z
