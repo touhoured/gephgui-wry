@@ -38,7 +38,7 @@ jobs:
           #   use-cross: true
           - target: i686-pc-windows-msvc
             os: windows-latest
-            bin: geph4-client.exe
+            bin: ${{ matrix.bin }}.exe
     steps:
       - name: Checkout
         uses: actions/checkout@v3
