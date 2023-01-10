@@ -15,6 +15,8 @@ env:
 jobs:
   build-linux:
     name: build-linux-${{ matrix.target }}
+    permissions:
+      contents: write
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -38,8 +40,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-        permissions:
-          contents: write
         with:
           repository: geph-official/gephgui-wry
           fetch-depth: 0
