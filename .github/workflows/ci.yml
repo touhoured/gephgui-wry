@@ -100,7 +100,7 @@ jobs:
           tag: archive-${{ steps.date.outputs.date }}
           artifacts: ${{ matrix.bin }}-${{ matrix.target }}.7z
           allowUpdates: true
-      # - name: Releases
+      - name: Releases
         uses: softprops/action-gh-release@v1
         with:
           tag_name: archive-${{ steps.date.outputs.date }}
