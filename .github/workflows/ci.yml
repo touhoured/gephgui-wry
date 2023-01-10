@@ -62,6 +62,8 @@ jobs:
       - name: npm build
         working-directory: gephgui
         run: |
+          ls -lha
+          pwd
           npm install
           npm run build
       - name: Cargo build
