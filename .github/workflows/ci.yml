@@ -59,6 +59,11 @@ jobs:
           matrix.target == 'aarch64-unknown-linux-musl'
         run: |
           sudo apt install musl-tools
+      - name: npm build
+        working-directory: gephgui
+        run: |
+          npm install
+          npm run build
       - name: Cargo build
         if: matrix.use-cross != true
         run: cargo build --target ${{ matrix.target }} --release --locked
