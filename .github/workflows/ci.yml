@@ -1,5 +1,4 @@
 name: CI
-
 on:
   schedule:
     - cron: "0 6 * * 3"
@@ -11,12 +10,12 @@ on:
         type: string
 env:
   CARGO_TERM_COLOR: always
+permissions:
+  contents: write
 
 jobs:
   build-linux:
     name: build-linux-${{ matrix.target }}
-    permissions:
-      contents: write
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
