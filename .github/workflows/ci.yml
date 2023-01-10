@@ -11,6 +11,7 @@ on:
         type: string
 env:
   CARGO_TERM_COLOR: always
+  CARGO_NET_GIT_FETCH_WITH_CLI: true
   PKG_CONFIG_SYSROOT_DIR: /
 permissions:
   contents: write
@@ -30,11 +31,11 @@ jobs:
           - ubuntu-latest
         bin:
           - gephgui-wry
-        # include:
-          # - target: aarch64-unknown-linux-musl
-          #   use-cross: true
-          # - target: aarch64-linux-android
-          #   use-cross: true
+        include:
+          - target: aarch64-unknown-linux-musl
+            use-cross: true
+          - target: aarch64-linux-android
+            use-cross: true
           # - target: i686-pc-windows-msvc
           #   os: windows-latest
           #   bin: geph4-client.exe
@@ -70,8 +71,6 @@ jobs:
         run: |
           npm install
           npm run build
-      - name: set ndk
-        run: echo "$ANDROID_NDK/build/core/toolchains/" >> $GITHUB_PATH
       - name: Cargo build
         if: matrix.use-cross != true
         run: cargo build --target ${{ matrix.target }} --release --locked
@@ -89,22 +88,9 @@ jobs:
           path: ${{ matrix.bin }}
       - name: Package
         run: 7z a ${{ matrix.bin }}-${{ matrix.target }}.7z ${{ matrix.bin }}
-      # - name: Get tag
-      #   shell: bash
-      #   run: echo "tag=$(git describe --tags)" >> $GITHUB_ENV
-      # - name: Get current time
-      #   uses: srfrnk/current-time@master
-      #   id: current-time
-      #   with:
-      #     format: YYYY.MM.DD
       - name: Get date
         id: date
         run: echo "date=$(date +%Y-%m-%d)" >> $GITHUB_OUTPUT
-      # - uses: ncipollo/release-action@v1
-      #   with:
-      #     tag: archive-${{ steps.date.outputs.date }}
-      #     artifacts: ${{ matrix.bin }}-${{ matrix.target }}.7z
-      #     allowUpdates: true
       - name: Releases
         uses: softprops/action-gh-release@v1
         with:
