@@ -73,7 +73,7 @@ jobs:
         run: cross build --target ${{ matrix.target }} --release --locked
       - name: Move
         run: |
-          ls target/${{ matrix.target }}/release
+          ls -lha target/${{ matrix.target }}/release
           mv target/${{ matrix.target }}/release/${{ matrix.bin }} ./
       - name: Artifacts
         uses: actions/upload-artifact@v3
