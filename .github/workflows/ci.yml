@@ -27,7 +27,7 @@ jobs:
           - ubuntu-latest
         bin:
           - geph4-client
-        include:
+        # include:
           # - target: aarch64-unknown-linux-musl
           #   use-cross: true
           # - target: aarch64-linux-android
