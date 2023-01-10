@@ -61,8 +61,7 @@ jobs:
       #   run: |
       #     sudo apt install musl-tools
       - name: install lib
-        run: |
-          apt install libgtk-3-dev libappindicator3-dev libwebkit2gtk-4.0-dev librsvg2-dev libssl-dev patchelf strace libpango1.0-dev libgdk-pixbuf2.0-dev gcc clang g++ zlib1g-dev libmpc-dev  libmpfr-dev libgmp-dev  build-essential
+        run: sudo apt install libgtk-3-dev libappindicator3-dev libwebkit2gtk-4.0-dev librsvg2-dev libssl-dev patchelf strace libpango1.0-dev libgdk-pixbuf2.0-dev gcc clang g++ zlib1g-dev libmpc-dev  libmpfr-dev libgmp-dev  build-essential
       - name: npm build
         working-directory: gephgui
         run: |
