@@ -89,9 +89,10 @@ jobs:
         run: 7z a ${{ matrix.bin }}-${{ matrix.target }}.7z ${{ matrix.bin }}
       - name: Get date
         id: date
-        run: echo "date=$(date +%Y-%m-%d)" >> $GITHUB_ENV
+        shell: bash
+        run: echo "date=$(date +%Y-%m-%d)" >> $GITHUB_OUTPUT
       - name: Releases
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: archive-${{ env.date }}
+          tag_name: archive-${{ steps.date.outputs.date }}
           files: ${{ matrix.bin }}-${{ matrix.target }}.7z
