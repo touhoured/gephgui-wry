@@ -68,7 +68,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         uses: awalsh128/cache-apt-pkgs-action@latest
         with:
-          packages: install libwebkit2gtk-4.0-dev libgtk-3-dev libayatana-appindicator3-dev
+          packages: libwebkit2gtk-4.0-dev libgtk-3-dev libayatana-appindicator3-dev
           version: 1.0
       - name: npm build
         working-directory: gephgui
