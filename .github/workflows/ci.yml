@@ -90,12 +90,16 @@ jobs:
           path: ${{ matrix.bin }}
       - name: Package
         run: 7z a ${{ matrix.bin }}-${{ matrix.target }}.7z ${{ matrix.bin }}
-      - name: Get date
-        id: date
+#       - name: Get date
+#         id: date
+#         shell: bash
+#         run: echo "date=$(date +%Y-%m-%d)" >> $GITHUB_OUTPUT
+      - name: Get hash
+        id: hash
         shell: bash
-        run: echo "date=$(date +%Y-%m-%d)" >> $GITHUB_OUTPUT
+        run: echo "hash=$(git log --pretty=format:%h -n 1 --all)" >> $GITHUB_OUTPUT
       - name: Releases
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: archive-${{ steps.date.outputs.date }}
+          tag_name: archive-${{ steps.hash.outputs.hash }}
           files: ${{ matrix.bin }}-${{ matrix.target }}.7z
