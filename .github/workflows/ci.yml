@@ -17,89 +17,62 @@ permissions:
   contents: write
 
 jobs:
+  sync:
+    name: Sync
+    runs-on: ubuntu-latest
+    if: inputs.skip_sync != true
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: master
+      - name: Sync
+        env:
+          upstream_repo: geph-official/gephgui-wry
+        run: |
+          git remote add upstream https://github.com/$upstream_repo.git
+          git fetch upstream
+          git reset --hard $(git log --all --pretty=format:'%H' -n 1)
+          git push -f
+          git push --tags -f
+      - name: Check update
+        run: |
+          tag=$(git describe --tags)
+          release_tag=$(gh api repos/touhoured/geph4-client-autobuild/releases/latest --jq '.tag_name')
+          echo "tag=$tag" >> $GITHUB_ENV
+          echo release_tag=$release_tag >> $GITHUB_ENV
+
   build-linux:
-    name: build-linux-${{ matrix.target }}
-    runs-on: ${{ matrix.os }}
+    name: build-linux
+    runs-on: ubuntu-latest
+    if: tag != release_tag
     strategy:
       matrix:
         target:
-          - x86_64-unknown-linux-gnu
-          # - x86_64-unknown-linux-musl
+          # - x86_64-unknown-linux-gnu
+          - x86_64-unknown-linux-musl
           # - aarch64-unknown-linux-musl
           # - aarch64-linux-android
-        os:
-          - ubuntu-latest
-        bin:
-          - gephgui-wry
-        include:
-          # - target: aarch64-unknown-linux-musl
-          #   use-cross: true
-          # - target: aarch64-linux-android
-          #   use-cross: true
-          - target: i686-pc-windows-msvc
-            os: windows-latest
-            bin: gephgui-wry.exe
     steps:
       - name: Checkout
         uses: actions/checkout@v3
         with:
           repository: geph-official/gephgui-wry
           fetch-depth: 0
-          submodules: true
       - name: Reset latest tag
         run: git reset --hard $(git rev-list --all --max-count=1)
-      - name: Reset to input ref
-        if: inputs.reset_sha != null
-        run: git reset --hard ${{ inputs.reset_sha }}
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
       - name: Install cross
-        if: matrix.use-cross == true
         uses: taiki-e/install-action@cross
-      # - name: Install musl-gcc
-      #   if: |
-      #     matrix.target == 'x86_64-unknown-linux-musl' ||
-      #     matrix.target == 'aarch64-unknown-linux-musl'
-      #   run: |
-      #     sudo apt install musl-tools
-      - name: install lib
-        if: matrix.os == 'ubuntu-latest'
-        uses: awalsh128/cache-apt-pkgs-action@latest
-        with:
-          packages: libwebkit2gtk-4.0-dev libgtk-3-dev libayatana-appindicator3-dev
-          version: 1.0
-      - name: npm build
-        working-directory: gephgui
+      - name: Cache
+        uses: Swatinem/rust-cache@v1
+      - name: build
         run: |
-          npm install
-          npm run build
-      - name: Cargo build
-        if: matrix.use-cross != true
-        run: cargo build --target ${{ matrix.target }} --release --locked
-      - name: Cross build
-        if: matrix.use-cross == true
-        run: cross build --target ${{ matrix.target }} --release --locked
-      - name: Move
-        run: mv target/${{ matrix.target }}/release/${{ matrix.bin }} ./
-      - name: Artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: ${{ matrix.bin }}-${{ matrix.target }}
-          path: ${{ matrix.bin }}
+          cross build --target ${{ matrix.target }} --release
       - name: Package
-        run: 7z a ${{ matrix.bin }}-${{ matrix.target }}.7z ${{ matrix.bin }}
-#       - name: Get date
-#         id: date
-#         shell: bash
-#         run: echo "date=$(date +%Y-%m-%d)" >> $GITHUB_OUTPUT
-      - name: Get hash
-        id: hash
-        shell: bash
-        run: echo "hash=$(git log --pretty=format:%h -n 1 --all)" >> $GITHUB_OUTPUT
+        working-directory: target/${{ matrix.target }}/release
+        run: |
+          7z a gephgui-wry-${{ matrix.target }}.7z gephgui-wry
       - name: Releases
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: archive-${{ steps.hash.outputs.hash }}
-          files: ${{ matrix.bin }}-${{ matrix.target }}.7z
+          tag_name: ${{ env.tag }}
+          files: target/${{ matrix.target }}/release/gephgui-wry-${{ matrix.target }}.7z
