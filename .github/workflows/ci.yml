@@ -44,7 +44,7 @@ jobs:
   build-linux:
     name: build-linux
     runs-on: ubuntu-latest
-    if: tag != release_tag
+    if: env.tag != env.release_tag
     strategy:
       matrix:
         target:
