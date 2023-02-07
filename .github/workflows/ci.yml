@@ -44,7 +44,7 @@ jobs:
         target:
           - i686-pc-windows-msvc
     env:
-      bin: gephgui-wry
+      bin: gephgui-wry.exe
       upstream: geph-official/gephgui-wry
     steps:
       - name: Checkout
@@ -76,11 +76,11 @@ jobs:
       - uses: actions/upload-artifact@v3
         with:
           name: ${{ env.bin }}-${{ matrix.target }}-${{ env.hash }}
-          path: target/${{ matrix.target }}/release/${{ env.bin }}.exe
+          path: target/${{ matrix.target }}/release/${{ env.bin }}
       - name: Compression
         working-directory: target/${{ matrix.target }}/release
         run: |
-          7z a ${{ env.bin }}.exe-${{ matrix.target }}-${{ env.hash }}.7z ${{ env.bin }}.exe
+          7z a ${{ env.bin }}-${{ matrix.target }}-${{ env.hash }}.7z ${{ env.bin }}
       - name: Releases
         uses: softprops/action-gh-release@v1
         with:
