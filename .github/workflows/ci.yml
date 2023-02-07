@@ -19,6 +19,8 @@ permissions:
 jobs:
   sync:
     name: Sync
+    env:
+      upstream: geph-official/gephgui-wry
     runs-on: ubuntu-latest
     if: inputs.skip_sync != true
     steps:
@@ -26,8 +28,6 @@ jobs:
         with:
           ref: master
       - name: Sync
-        env:
-          upstream_repo: geph-official/gephgui-wry
         run: |
           git remote add upstream https://github.com/$upstream_repo.git
           git fetch upstream
@@ -53,33 +53,27 @@ jobs:
           fetch-depth: 0
       - name: Reset latest tag
         run: git reset --hard $(git rev-list --all --max-count=1)
-      - name: Check tag
+      - name: Check version
         run: |
-          tag=$(git describe --tags)
-          release_tag=$(gh api repos/${{ github.repository }}/releases/latest --jq '.tag_name')
-          echo "tag=$tag" >> $GITHUB_ENV
-          echo release_tag=$release_tag >> $GITHUB_ENV
-          if $tag=$release_tag
-          then
-            echo "isLatest=true" >> $GITHUB_ENV
-          fi
-      - name: Install cross
+          hash=$(git log --pretty=format:%h -n 1 --all)
+          echo "tag_name=archive-$hash" >> $GITHUB_ENV
+      - name: Install Cross
         uses: taiki-e/install-action@cross
       - name: Cache Rust
         uses: Swatinem/rust-cache@v1
       - name: Build
         run: |
           cross build --target ${{ matrix.target }} --release
+      - uses: actions/upload-artifact@v3
+        with:
+          name: ${{ env.bin }}-${{ matrix.target }}-${{ env.tag_name }}
+          path: target/${{ matrix.target }}/release/${{ env.bin }}
       - name: Compression
         working-directory: target/${{ matrix.target }}/release
         run: |
           7z a ${{ env.bin }}-${{ matrix.target }}.7z ${{ env.bin }}
-      - uses: actions/upload-artifact@v3
-        with:
-          name: ${{ env.bin }}-${{ matrix.target }}-${{ env.tag }}
-          path: target/${{ matrix.target }}/release/${{ env.bin }}
       - name: Releases
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ env.tag }}
+          tag_name: ${{ env.tag_name }}
           files: target/${{ matrix.target }}/release/${{ env.bin }}-${{ matrix.target }}.7z
