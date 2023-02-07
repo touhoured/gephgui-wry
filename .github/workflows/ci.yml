@@ -68,10 +68,10 @@ jobs:
       - name: npm build
         working-directory: gephgui
         run: |
+          pwd
+          ls -lha
           npm install
           npm run build
-      - name: Install Cross
-        uses: taiki-e/install-action@cross
       - name: Cache Rust
         uses: Swatinem/rust-cache@v1
       - name: Build
