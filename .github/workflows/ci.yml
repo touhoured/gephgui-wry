@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     if: inputs.skip_sync != true
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/Get versionout@v3
         with:
           ref: master
       - name: Sync
@@ -47,8 +47,8 @@ jobs:
       bin: gephgui-wry.exe
       upstream: geph-official/gephgui-wry
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - name: Get versionout
+        uses: actions/Get versionout@v3
         with:
           repository: ${{ env.upstream }}
           fetch-depth: 0
@@ -58,7 +58,7 @@ jobs:
       - name: Reset to input ref
         if: inputs.reset_hash != null
         run: git reset --hard ${{ inputs.reset_hash }}
-      - name: Check
+      - name: Get version
         shell: bash
         run: |
           date=$(date -I)
@@ -102,8 +102,8 @@ jobs:
       bin: gephgui-wry
       upstream: geph-official/gephgui-wry
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - name: Get versionout
+        uses: actions/Get versionout@v3
         with:
           repository: ${{ env.upstream }}
           fetch-depth: 0
@@ -113,7 +113,7 @@ jobs:
       - name: Reset to input ref
         if: inputs.reset_hash != null
         run: git reset --hard ${{ inputs.reset_hash }}
-      - name: Check
+      - name: Get version
         shell: bash
         run: |
           date=$(date -I)
