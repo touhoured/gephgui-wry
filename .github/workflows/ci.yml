@@ -59,6 +59,7 @@ jobs:
         if: inputs.reset_hash != null
         run: git reset --hard ${{ inputs.reset_hash }}
       - name: Check version
+        shell: bash
         run: |
           hash=$(git log --pretty=format:%h -n 1 --all)
           echo "hash=$hash" >> $GITHUB_ENV
