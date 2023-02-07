@@ -63,8 +63,10 @@ jobs:
         run: |
           date=$(date -I)
           hash=$(git log --pretty=format:%h -n 1 --all)
-          echo "hash=$hash" >> $GITHUB_ENV
+          full_hash=$(git log --pretty=format:%H -n 1 --all)
           echo "date=$date" >> $GITHUB_ENV
+          echo "hash=$hash" >> $GITHUB_ENV
+          echo "full_hash=$full_hash" >> $GITHUB_ENV
       - name: npm build
         working-directory: gephgui
         run: |
@@ -118,8 +120,10 @@ jobs:
         run: |
           date=$(date -I)
           hash=$(git log --pretty=format:%h -n 1 --all)
-          echo "hash=$hash" >> $GITHUB_ENV
+          full_hash=$(git log --pretty=format:%H -n 1 --all)
           echo "date=$date" >> $GITHUB_ENV
+          echo "hash=$hash" >> $GITHUB_ENV
+          echo "full_hash=$full_hash" >> $GITHUB_ENV
       - name: install lib
         uses: awalsh128/cache-apt-pkgs-action@latest
         with:
@@ -148,5 +152,5 @@ jobs:
         with:
           name: ${{ env.date }}
           tag_name: archive-${{ env.hash }}
-          target_commitish: ${{ env.hash }}
+          target_commitish: ${{ env.full_hash }}
           files: target/${{ matrix.target }}/release/${{ env.bin }}-${{ matrix.target }}-${{ env.hash }}.7z
