@@ -56,7 +56,7 @@ jobs:
       - name: Check version
         run: |
           hash=$(git log --pretty=format:%h -n 1 --all)
-          echo "tag_name=archive-$hash" >> $GITHUB_ENV
+          echo "hash=$hash" >> $GITHUB_ENV
       - name: Install Cross
         uses: taiki-e/install-action@cross
       - name: Cache Rust
@@ -66,14 +66,14 @@ jobs:
           cross build --target ${{ matrix.target }} --release
       - uses: actions/upload-artifact@v3
         with:
-          name: ${{ env.bin }}-${{ matrix.target }}-${{ env.tag_name }}
+          name: ${{ env.bin }}-${{ matrix.target }}-${{ env.hash }}
           path: target/${{ matrix.target }}/release/${{ env.bin }}
       - name: Compression
         working-directory: target/${{ matrix.target }}/release
         run: |
-          7z a ${{ env.bin }}-${{ matrix.target }}.7z ${{ env.bin }}
+          7z a ${{ env.bin }}-${{ matrix.target }}-${{ env.hash }}.7z ${{ env.bin }}
       - name: Releases
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ env.tag_name }}
-          files: target/${{ matrix.target }}/release/${{ env.bin }}-${{ matrix.target }}.7z
+          tag_name: archive-${{ env.hash }}
+          files: target/${{ matrix.target }}/release/${{ env.bin }}-${{ matrix.target }}-${{ env.hash }}.7z
