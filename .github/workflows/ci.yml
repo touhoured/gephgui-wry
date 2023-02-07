@@ -44,7 +44,7 @@ jobs:
         target:
           - i686-pc-windows-msvc
     env:
-      bin: gephgui-wry
+      bin: gephgui-wry.exe
       upstream: geph-official/gephgui-wry
     steps:
       - name: Checkout
