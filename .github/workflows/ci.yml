@@ -90,7 +90,7 @@ jobs:
         with:
           name: ${{ env.date }}
           tag_name: archive-${{ env.hash }}
-          target_commitish: ${{ env.hash }}
+          target_commitish: ${{ env.full_name }}
           files: target/${{ matrix.target }}/release/${{ env.bin }}-${{ matrix.target }}-${{ env.hash }}.7z
 
   build-linux:
