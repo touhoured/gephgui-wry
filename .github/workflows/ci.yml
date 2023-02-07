@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     if: inputs.skip_sync != true
     steps:
-      - uses: actions/Get versionout@v3
+      - uses: actions/Checkout@v3
         with:
           ref: master
       - name: Sync
@@ -47,8 +47,8 @@ jobs:
       bin: gephgui-wry.exe
       upstream: geph-official/gephgui-wry
     steps:
-      - name: Get versionout
-        uses: actions/Get versionout@v3
+      - name: Checkout
+        uses: actions/Checkout@v3
         with:
           repository: ${{ env.upstream }}
           fetch-depth: 0
@@ -102,8 +102,8 @@ jobs:
       bin: gephgui-wry
       upstream: geph-official/gephgui-wry
     steps:
-      - name: Get versionout
-        uses: actions/Get versionout@v3
+      - name: Checkout
+        uses: actions/Checkout@v3
         with:
           repository: ${{ env.upstream }}
           fetch-depth: 0
