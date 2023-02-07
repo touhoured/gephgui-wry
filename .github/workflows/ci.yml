@@ -58,11 +58,13 @@ jobs:
       - name: Reset to input ref
         if: inputs.reset_hash != null
         run: git reset --hard ${{ inputs.reset_hash }}
-      - name: Check version
+      - name: Check
         shell: bash
         run: |
+          date=$(date -I)
           hash=$(git log --pretty=format:%h -n 1 --all)
           echo "hash=$hash" >> $GITHUB_ENV
+          echo "date=$date" >> $GITHUB_ENV
       - name: npm build
         working-directory: gephgui
         run: |
@@ -84,7 +86,9 @@ jobs:
       - name: Releases
         uses: softprops/action-gh-release@v1
         with:
+          name: ${{ env.date }}
           tag_name: archive-${{ env.hash }}
+          target_commitish: ${{ env.hash }}
           files: target/${{ matrix.target }}/release/${{ env.bin }}-${{ matrix.target }}-${{ env.hash }}.7z
 
   build-linux:
@@ -109,10 +113,13 @@ jobs:
       - name: Reset to input ref
         if: inputs.reset_hash != null
         run: git reset --hard ${{ inputs.reset_hash }}
-      - name: Check version
+      - name: Check
+        shell: bash
         run: |
+          date=$(date -I)
           hash=$(git log --pretty=format:%h -n 1 --all)
           echo "hash=$hash" >> $GITHUB_ENV
+          echo "date=$date" >> $GITHUB_ENV
       - name: install lib
         uses: awalsh128/cache-apt-pkgs-action@latest
         with:
@@ -139,5 +146,7 @@ jobs:
       - name: Releases
         uses: softprops/action-gh-release@v1
         with:
+          name: ${{ env.date }}
           tag_name: archive-${{ env.hash }}
+          target_commitish: ${{ env.hash }}
           files: target/${{ matrix.target }}/release/${{ env.bin }}-${{ matrix.target }}-${{ env.hash }}.7z
