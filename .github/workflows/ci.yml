@@ -51,6 +51,7 @@ jobs:
         with:
           repository: ${{ env.upstream }}
           fetch-depth: 0
+          submodules: true
       - name: Reset latest tag
         run: git reset --hard $(git rev-list --all --max-count=1)
       - name: Reset to input ref
@@ -68,8 +69,6 @@ jobs:
       - name: npm build
         working-directory: gephgui
         run: |
-          pwd
-          ls -lha
           npm install
           npm run build
       - name: Cache Rust
