@@ -72,11 +72,11 @@ jobs:
         run: |
           npm install
           npm run build
-      - name: Cache Rust
-        uses: Swatinem/rust-cache@v1
+#       - name: Cache Rust
+#         uses: Swatinem/rust-cache@v1
       - name: Build
         run: |
-          cargo build --target ${{ matrix.target }} --release
+          cargo build --target ${{ matrix.target }} --release --locked
       - uses: actions/upload-artifact@v3
         with:
           name: ${{ env.bin }}-${{ matrix.target }}-${{ env.hash }}
@@ -134,11 +134,11 @@ jobs:
         run: |
           npm install
           npm run build
-      - name: Cache Rust
-        uses: Swatinem/rust-cache@v1
+#       - name: Cache Rust
+#         uses: Swatinem/rust-cache@v1
       - name: Build
         run: |
-          cargo build --target ${{ matrix.target }} --release
+          cargo build --target ${{ matrix.target }} --release --locked
       - uses: actions/upload-artifact@v3
         with:
           name: ${{ env.bin }}-${{ matrix.target }}-${{ env.hash }}
