@@ -43,6 +43,7 @@ jobs:
       matrix:
         target:
           - i686-pc-windows-msvc
+          - x86_64-pc-windows-msvc
     env:
       bin: gephgui-wry.exe
       upstream: geph-official/gephgui-wry
