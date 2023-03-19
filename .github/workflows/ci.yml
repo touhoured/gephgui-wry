@@ -80,19 +80,19 @@ jobs:
           cargo build --target ${{ matrix.target }} --release --locked
       - uses: actions/upload-artifact@v3
         with:
-          name: ${{ env.bin }}-${{ matrix.target }}-${{ env.hash }}
+          name: ${{ env.bin }}-${{ matrix.target }}
           path: target/${{ matrix.target }}/release/${{ env.bin }}
       - name: Compression
         working-directory: target/${{ matrix.target }}/release
         run: |
-          7z a ${{ env.bin }}-${{ matrix.target }}-${{ env.hash }}.7z ${{ env.bin }}
+          7z a ${{ env.bin }}-${{ matrix.target }}.7z ${{ env.bin }}
       - name: Releases
         uses: softprops/action-gh-release@v1
         with:
           name: ${{ env.date }}
           tag_name: archive-${{ env.hash }}
           target_commitish: ${{ env.full_name }}
-          files: target/${{ matrix.target }}/release/${{ env.bin }}-${{ matrix.target }}-${{ env.hash }}.7z
+          files: target/${{ matrix.target }}/release/${{ env.bin }}-${{ matrix.target }}.7z
 
   build-linux:
     name: build-linux
@@ -142,16 +142,16 @@ jobs:
           cargo build --target ${{ matrix.target }} --release --locked
       - uses: actions/upload-artifact@v3
         with:
-          name: ${{ env.bin }}-${{ matrix.target }}-${{ env.hash }}
+          name: ${{ env.bin }}-${{ matrix.target }}
           path: target/${{ matrix.target }}/release/${{ env.bin }}
       - name: Compression
         working-directory: target/${{ matrix.target }}/release
         run: |
-          7z a ${{ env.bin }}-${{ matrix.target }}-${{ env.hash }}.7z ${{ env.bin }}
+          7z a ${{ env.bin }}-${{ matrix.target }}.7z ${{ env.bin }}
       - name: Releases
         uses: softprops/action-gh-release@v1
         with:
           name: ${{ env.date }}
           tag_name: archive-${{ env.hash }}
           target_commitish: ${{ env.full_hash }}
-          files: target/${{ matrix.target }}/release/${{ env.bin }}-${{ matrix.target }}-${{ env.hash }}.7z
+          files: target/${{ matrix.target }}/release/${{ env.bin }}-${{ matrix.target }}.7z
