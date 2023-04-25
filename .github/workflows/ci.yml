@@ -22,7 +22,6 @@ jobs:
     env:
       upstream: geph-official/gephgui-wry
     runs-on: ubuntu-latest
-    if: inputs.skip_sync != true
     steps:
       - uses: actions/Checkout@v3
         with:
