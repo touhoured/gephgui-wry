@@ -15,11 +15,13 @@ use crate::{
     WINDOW_HEIGHT, WINDOW_WIDTH,
 };
 use anyhow::Context;
+use geph4_protocol::binder::protocol::Credentials;
 
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 use serde::Deserialize;
 
+use crate::utils::to_flags;
 use tide::convert::{DeserializeOwned, Serialize};
 use wry::application::dpi::LogicalSize;
 use wry::{
@@ -68,14 +70,15 @@ pub type DeathBox = Mutex<Option<std::process::Child>>;
 
 pub static RUNNING_DAEMON: Lazy<DeathBox> = Lazy::new(Default::default);
 
-fn handle_sync(params: (String, String, bool)) -> anyhow::Result<String> {
-    let (username, password, force) = params;
+fn handle_sync(params: (Credentials, bool)) -> anyhow::Result<String> {
+    let (credentials, force) = params;
     let mut cmd = Command::new("geph4-client");
-    cmd.arg("sync")
-        .arg("--username")
-        .arg(username)
-        .arg("--password")
-        .arg(password)
+    let mut v = vec![];
+    v.push("sync");
+    for token in to_flags(credentials) {
+        v.push(&token);
+    }
+    cmd.args(v)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());

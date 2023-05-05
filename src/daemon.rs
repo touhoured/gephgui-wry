@@ -1,3 +1,4 @@
+use geph4_client::config::AuthKind;
 use once_cell::sync::Lazy;
 use rand::Rng;
 use serde::Deserialize;
@@ -8,6 +9,8 @@ use anyhow::Context;
 use std::os::windows::process::CommandExt;
 use std::path::PathBuf;
 
+use crate::utils::to_flags;
+
 /// The daemon RPC key
 pub static GEPH_RPC_KEY: Lazy<String> =
     Lazy::new(|| format!("geph-rpc-key-{}", rand::thread_rng().gen::<u128>()));
@@ -15,8 +18,7 @@ pub static GEPH_RPC_KEY: Lazy<String> =
 /// Configuration for starting the daemon
 #[derive(Deserialize, Debug)]
 pub struct DaemonConfig {
-    pub username: String,
-    pub password: String,
+    pub auth_kind: AuthKind,
     pub exit_hostname: String,
     pub force_bridges: bool,
     pub vpn_mode: bool,
@@ -58,10 +60,9 @@ impl DaemonConfig {
         std::env::set_var("GEPH_RPC_KEY", GEPH_RPC_KEY.clone());
         let common_args = Vec::new()
             .tap_mut(|v| {
-                v.push("--username".to_string());
-                v.push(self.username.clone());
-                v.push("--password".into());
-                v.push(self.password.clone());
+                for token in to_flags(self.auth_kind) {
+                    v.push(token);
+                }
                 v.push("--exit-server".into());
                 v.push(self.exit_hostname.clone());
                 if let Some(force) = self.force_protocol.clone() {
