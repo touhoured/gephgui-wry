@@ -24,7 +24,7 @@ pub async fn autoupdate_loop() {
                 let decision_made = {
                     let (send, recv) = smol::channel::bounded(1);
 
-                    mt_enqueue(move |wv| {
+                    mt_enqueue(move |_wv| {
                         let res = native_dialog::MessageDialog::new().set_title("Update available / 可用更新").set_text(&format!("A new version ({version}) of Geph is available. Upgrade?\n发现更新版本的迷雾通（{version}）。是否更新？\n發現更新版本的迷霧通（{version}）。是否更新？")).show_confirm();
                         let _ = send.try_send(res.unwrap_or_default());
                     });

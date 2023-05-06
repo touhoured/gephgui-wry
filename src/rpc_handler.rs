@@ -1,5 +1,5 @@
 use std::{
-    io::{Read, Write},
+    io::{BufRead, BufReader, Read, Write},
     process::{Command, Stdio},
     sync::atomic::{AtomicBool, Ordering},
     time::{Duration, SystemTime, UNIX_EPOCH},
@@ -12,10 +12,10 @@ use crate::{
     daemon::{debugpack_path, DaemonConfig, DAEMON_VERSION, GEPH_RPC_KEY},
     mtbus::mt_enqueue,
     pac::{configure_proxy, deconfigure_proxy},
+    utils::RpcAuthKind,
     WINDOW_HEIGHT, WINDOW_WIDTH,
 };
 use anyhow::Context;
-use geph4_protocol::binder::protocol::Credentials;
 
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
@@ -70,15 +70,13 @@ pub type DeathBox = Mutex<Option<std::process::Child>>;
 
 pub static RUNNING_DAEMON: Lazy<DeathBox> = Lazy::new(Default::default);
 
-fn handle_sync(params: (Credentials, bool)) -> anyhow::Result<String> {
+fn handle_sync(params: (RpcAuthKind, bool)) -> anyhow::Result<String> {
     let (credentials, force) = params;
+    let auth_flags = to_flags(credentials)?;
+
     let mut cmd = Command::new("geph4-client");
-    let mut v = vec![];
-    v.push("sync");
-    for token in to_flags(credentials) {
-        v.push(&token);
-    }
-    cmd.args(v)
+    cmd.arg("sync")
+        .args(auth_flags)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
@@ -122,16 +120,17 @@ fn handle_binder_rpc(params: (String,)) -> anyhow::Result<String> {
     #[cfg(windows)]
     cmd.creation_flags(0x08000000);
     let mut child = cmd.spawn()?;
-    eprintln!("params: {params}");
+    eprintln!("params passed to binder-proxy: {:?}", params);
     let mut stdin = child.stdin.take().unwrap();
     std::thread::spawn(move || {
         let _ = stdin.write_all(params.as_bytes());
         let _ = stdin.write_all(b"\n");
     });
     let mut s = String::new();
-    child.stdout.take().unwrap().read_to_string(&mut s)?;
-    eprintln!("{}", s);
-    child.wait()?;
+    let mut buf_stdout = BufReader::new(child.stdout.take().unwrap());
+    buf_stdout.read_line(&mut s)?;
+    // eprintln!("FROM geph4-client binder-proxy: {:?}", s);
+    child.kill()?;
     Ok(s)
 }
 

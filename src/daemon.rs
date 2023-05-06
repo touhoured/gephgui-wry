@@ -1,4 +1,3 @@
-use geph4_client::config::AuthKind;
 use once_cell::sync::Lazy;
 use rand::Rng;
 use serde::Deserialize;
@@ -9,7 +8,7 @@ use anyhow::Context;
 use std::os::windows::process::CommandExt;
 use std::path::PathBuf;
 
-use crate::utils::to_flags;
+use crate::utils::{to_flags, RpcAuthKind};
 
 /// The daemon RPC key
 pub static GEPH_RPC_KEY: Lazy<String> =
@@ -18,7 +17,7 @@ pub static GEPH_RPC_KEY: Lazy<String> =
 /// Configuration for starting the daemon
 #[derive(Deserialize, Debug)]
 pub struct DaemonConfig {
-    pub auth_kind: AuthKind,
+    pub auth: RpcAuthKind,
     pub exit_hostname: String,
     pub force_bridges: bool,
     pub vpn_mode: bool,
@@ -36,10 +35,14 @@ pub static DAEMON_VERSION: Lazy<String> = Lazy::new(|| {
     #[cfg(windows)]
     cmd.creation_flags(0x08000000);
 
-    String::from_utf8_lossy(&cmd.output().unwrap().stdout)
-        .replace("geph4-client", "")
-        .trim()
-        .to_string()
+    String::from_utf8_lossy(
+        &cmd.output()
+            .expect("could not find geph4-client in path")
+            .stdout,
+    )
+    .replace("geph4-client", "")
+    .trim()
+    .to_string()
 });
 
 /// Returns the daemon version.
@@ -58,11 +61,9 @@ impl DaemonConfig {
     /// Starts the daemon, returning a death handle.
     pub fn start(self) -> anyhow::Result<std::process::Child> {
         std::env::set_var("GEPH_RPC_KEY", GEPH_RPC_KEY.clone());
+        let mut auth_args = to_flags(self.auth.clone())?;
         let common_args = Vec::new()
             .tap_mut(|v| {
-                for token in to_flags(self.auth_kind) {
-                    v.push(token);
-                }
                 v.push("--exit-server".into());
                 v.push(self.exit_hostname.clone());
                 if let Some(force) = self.force_protocol.clone() {
@@ -71,6 +72,7 @@ impl DaemonConfig {
                 }
                 v.push("--debugpack-path".into());
                 v.push(debugpack_path().to_string_lossy().to_string());
+                v.append(&mut auth_args);
             })
             .tap_mut(|v| {
                 if self.prc_whitelist {
@@ -99,6 +101,7 @@ impl DaemonConfig {
                 cmd.arg("connect");
                 cmd.args(&common_args);
                 cmd.arg("--vpn-mode").arg("tun-route");
+                eprintln!("CONNECT COMMAND: {:?}", cmd);
                 let child = cmd.spawn().context("cannot spawn non-VPN child")?;
                 Ok(child)
             }
