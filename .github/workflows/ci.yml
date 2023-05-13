@@ -9,6 +9,10 @@ on:
         description: "Reset to hash"
         required: false
         type: string
+      run_on_latest:
+        description: "Run on Latest Commit"
+        required: false
+        type: boolean
 env:
   CARGO_TERM_COLOR: always
   # CARGO_NET_GIT_FETCH_WITH_CLI: true
@@ -30,7 +34,7 @@ jobs:
         run: |
           git remote add upstream https://github.com/$upstream.git
           git fetch upstream
-          git reset --hard $(git log --all --pretty=format:'%H' -n 1)
+          # git reset --hard $(git log --all --pretty=format:'%H' -n 1)
           git push -f
           git push --tags -f
 
@@ -54,6 +58,7 @@ jobs:
           fetch-depth: 0
           submodules: true
       - name: Reset latest tag
+        if: inputs.run_on_latest == true
         run: git reset --hard $(git rev-list --all --max-count=1)
       - name: Reset to input ref
         if: inputs.reset_hash != null
@@ -62,8 +67,8 @@ jobs:
         shell: bash
         run: |
           date=$(date -I)
-          hash=$(git log --pretty=format:%h -n 1 --all)
-          full_hash=$(git log --pretty=format:%H -n 1 --all)
+          hash=$(git log --pretty=format:%h -n 1)
+          full_hash=$(git log --pretty=format:%H -n 1)
           echo "date=$date" >> $GITHUB_ENV
           echo "hash=$hash" >> $GITHUB_ENV
           echo "full_hash=$full_hash" >> $GITHUB_ENV
@@ -111,6 +116,7 @@ jobs:
           fetch-depth: 0
           submodules: true
       - name: Reset latest tag
+        if: inputs.run_on_latest == true
         run: git reset --hard $(git rev-list --all --max-count=1)
       - name: Reset to input ref
         if: inputs.reset_hash != null
@@ -119,8 +125,8 @@ jobs:
         shell: bash
         run: |
           date=$(date -I)
-          hash=$(git log --pretty=format:%h -n 1 --all)
-          full_hash=$(git log --pretty=format:%H -n 1 --all)
+          hash=$(git log --pretty=format:%h -n 1)
+          full_hash=$(git log --pretty=format:%H -n 1)
           echo "date=$date" >> $GITHUB_ENV
           echo "hash=$hash" >> $GITHUB_ENV
           echo "full_hash=$full_hash" >> $GITHUB_ENV
@@ -146,11 +152,11 @@ jobs:
       - name: Compression
         working-directory: target/${{ matrix.target }}/release
         run: |
-          7z a ${{ env.bin }}-${{ matrix.target }}.7z ${{ env.bin }}
+          tar -zcvf ${{ env.bin }}-${{ matrix.target }}.tar.gz ${{ env.bin }}
       - name: Releases
         uses: softprops/action-gh-release@v1
         with:
           name: ${{ env.date }}
           tag_name: archive-${{ env.hash }}
           target_commitish: ${{ env.full_hash }}
-          files: target/${{ matrix.target }}/release/${{ env.bin }}-${{ matrix.target }}.7z
+          files: target/${{ matrix.target }}/release/${{ env.bin }}-${{ matrix.target }}.tar.gz
