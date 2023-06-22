@@ -14,89 +14,76 @@ on:
         required: false
         type: boolean
 env:
-  CARGO_TERM_COLOR: always
-  # CARGO_NET_GIT_FETCH_WITH_CLI: true
-  # PKG_CONFIG_SYSROOT_DIR: /
+  upstream: geph-official/geph4-client
+  bin: geph4-client
+
 permissions:
   contents: write
 
 jobs:
-  sync:
-    name: Sync
-    env:
-      upstream: geph-official/gephgui-wry
+  common:
+    name: common
     runs-on: ubuntu-latest
+    outputs:
+      date: ${{ steps.getenv.outputs.date }}
+      hash: ${{ steps.getenv.outputs.hash }}
+      full_hash: ${{ steps.getenv.outputs.full_hash }}
+      tag_name: ${{ steps.getenv.outputs.tag_name }}
     steps:
-      - uses: actions/Checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
         with:
           ref: master
-      - name: Sync
+          fetch-depth: 0
+
+      - name: Reset to Input HEAD
+        if: inputs.reset_head != null
+        run: git reset --hard ${{ inputs.reset_head }}
+
+      - name: Get environment variable
+        id: getenv
+        shell: bash
         run: |
-          git remote add upstream https://github.com/$upstream.git
-          git fetch upstream
-          # git reset --hard $(git log --all --pretty=format:'%H' -n 1)
-          git push -f
-          git push --tags -f
+          echo "date=$(date -I)" >> "${GITHUB_OUTPUT}"
+          echo "hash=$(git log --pretty=format:%h -n 1)" >> "${GITHUB_OUTPUT}"
+          echo "full_hash=$(git log --pretty=format:%H -n 1)" >> "${GITHUB_OUTPUT}"
+          echo "tag_name=$(git describe --tags)" >> "${GITHUB_OUTPUT}"
 
   build-windows:
-    name: build-windows
+    name: Build Windows
     runs-on: windows-latest
-    if: inputs.skip-build-windows != true
+    needs: common
+    if: inputs.skip_build_windows != true
     strategy:
       matrix:
         target:
           - i686-pc-windows-msvc
           - x86_64-pc-windows-msvc
-    env:
-      bin: gephgui-wry.exe
-      upstream: geph-official/gephgui-wry
     steps:
       - name: Checkout
-        uses: actions/Checkout@v3
+        uses: actions/checkout@v3
         with:
-          repository: ${{ env.upstream }}
-          fetch-depth: 0
+          ref: master
           submodules: true
-      - name: Reset latest tag
-        if: inputs.run_on_latest == true
-        run: git reset --hard $(git rev-list --all --max-count=1)
-      - name: Reset to input ref
-        if: inputs.reset_hash != null
-        run: git reset --hard ${{ inputs.reset_hash }}
-      - name: Get version
-        shell: bash
-        run: |
-          date=$(date -I)
-          hash=$(git log --pretty=format:%h -n 1)
-          full_hash=$(git log --pretty=format:%H -n 1)
-          echo "date=$date" >> $GITHUB_ENV
-          echo "hash=$hash" >> $GITHUB_ENV
-          echo "full_hash=$full_hash" >> $GITHUB_ENV
+
+      - name: Reset to Input HEAD
+        if: inputs.reset_head != null
+        run: git reset --hard ${{ inputs.reset_head }}
+
       - name: npm build
         working-directory: gephgui
         run: |
           npm install
           npm run build
-#       - name: Cache Rust
-#         uses: Swatinem/rust-cache@v1
+
       - name: Build
         run: |
           cargo build --target ${{ matrix.target }} --release --locked
+
       - uses: actions/upload-artifact@v3
         with:
           name: ${{ env.bin }}-${{ matrix.target }}
-          path: target/${{ matrix.target }}/release/${{ env.bin }}
-      - name: Compression
-        working-directory: target/${{ matrix.target }}/release
-        run: |
-          7z a ${{ env.bin }}-${{ matrix.target }}.7z ${{ env.bin }}
-      - name: Releases
-        uses: softprops/action-gh-release@v1
-        with:
-          name: ${{ env.date }}
-          tag_name: archive-${{ env.hash }}
-          target_commitish: ${{ env.full_name }}
-          files: target/${{ matrix.target }}/release/${{ env.bin }}-${{ matrix.target }}.7z
+          path: target/${{ matrix.target }}/release/${{ env.bin }}.exe
 
   build-linux:
     name: build-linux
@@ -110,53 +97,84 @@ jobs:
       upstream: geph-official/gephgui-wry
     steps:
       - name: Checkout
-        uses: actions/Checkout@v3
+        uses: actions/checkout@v3
         with:
-          repository: ${{ env.upstream }}
-          fetch-depth: 0
+          ref: master
           submodules: true
-      - name: Reset latest tag
-        if: inputs.run_on_latest == true
-        run: git reset --hard $(git rev-list --all --max-count=1)
-      - name: Reset to input ref
-        if: inputs.reset_hash != null
-        run: git reset --hard ${{ inputs.reset_hash }}
-      - name: Get version
-        shell: bash
-        run: |
-          date=$(date -I)
-          hash=$(git log --pretty=format:%h -n 1)
-          full_hash=$(git log --pretty=format:%H -n 1)
-          echo "date=$date" >> $GITHUB_ENV
-          echo "hash=$hash" >> $GITHUB_ENV
-          echo "full_hash=$full_hash" >> $GITHUB_ENV
-      - name: install lib
+
+      - name: Reset to Input HEAD
+        if: inputs.reset_head != null
+        run: git reset --hard ${{ inputs.reset_head }}
+
+      - name: Install library
         uses: awalsh128/cache-apt-pkgs-action@latest
         with:
           packages: libwebkit2gtk-4.0-dev libgtk-3-dev libayatana-appindicator3-dev
           version: 1.0
-      - name: npm build
+          
+      - name: NPM build
         working-directory: gephgui
         run: |
           npm install
           npm run build
-#       - name: Cache Rust
-#         uses: Swatinem/rust-cache@v1
+          
       - name: Build
         run: |
           cargo build --target ${{ matrix.target }} --release --locked
+          
       - uses: actions/upload-artifact@v3
         with:
           name: ${{ env.bin }}-${{ matrix.target }}
           path: target/${{ matrix.target }}/release/${{ env.bin }}
-      - name: Compression
-        working-directory: target/${{ matrix.target }}/release
+
+  upload-release:
+    name: Upload file
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    needs:
+      - common
+      - build-windows
+      - build-linux
+    env:
+      full_hash: ${{ needs.common.outputs.full_hash }}
+      tag_name: ${{ needs.common.outputs.tag_name }}
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v3
+
+      - name: Compresse and rename
         run: |
-          tar -zcvf ${{ env.bin }}-${{ matrix.target }}.tar.gz ${{ env.bin }}
-      - name: Releases
+          mkdir release daily
+          for file in ${{ env.bin }}*/*; do
+              dirname=$(dirname "${file}")
+              if [[ "${file}" == *"windows"* ]]; then
+                  7z a "release/${dirname}.7z" "${file}"
+                  cp "${file}" "daily/${dirname}.exe"
+              else
+                  tar -vcaf "release/${dirname}.tar.xz" "${file}"
+                  cp ${file} daily/${dirname}
+              fi
+          done
+
+      - name: Release
         uses: softprops/action-gh-release@v1
         with:
-          name: ${{ env.date }}
-          tag_name: archive-${{ env.hash }}
+          name: ${{ env.tag_name }}
+          tag_name: ${{ env.tag_name }}
           target_commitish: ${{ env.full_hash }}
-          files: target/${{ matrix.target }}/release/${{ env.bin }}-${{ matrix.target }}.tar.gz
+          files: release/*
+
+      - name: Update tag
+        uses: jimeh/update-tags-action@v1
+        with:
+          tags: daily
+          ref: ${{ env.full_hash }}
+
+      - name: Daily
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Daily
+          tag_name: daily
+          files: daily/*
+
