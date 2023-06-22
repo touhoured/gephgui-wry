@@ -14,9 +14,8 @@ on:
         required: false
         type: boolean
 env:
-  upstream: geph-official/geph4-client
-  bin: geph4-client
-
+  # upstream: geph-official/gephgui-wry
+  bin: gephgui-wry
 permissions:
   contents: write
 
