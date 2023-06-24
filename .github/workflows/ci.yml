@@ -136,8 +136,10 @@ jobs:
       - build-windows
       - build-linux
     env:
+      hash: ${{ needs.common.outputs.hash }}
       full_hash: ${{ needs.common.outputs.full_hash }}
       tag_name: ${{ needs.common.outputs.tag_name }}
+      date: ${{ needs.common.outputs.date }}
     steps:
       - name: Download artifact
         uses: actions/download-artifact@v3
@@ -159,8 +161,8 @@ jobs:
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
-          name: ${{ env.tag_name }}
-          tag_name: ${{ env.tag_name }}
+          name: ${{ env.date }}
+          tag_name: archive-${{ env.hash }}
           target_commitish: ${{ env.full_hash }}
           files: release/*
 
