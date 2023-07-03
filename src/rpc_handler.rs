@@ -1,4 +1,5 @@
 use std::{
+    fs::remove_file,
     io::{Read, Write},
     process::{Command, Stdio},
     sync::atomic::{AtomicBool, Ordering},
@@ -174,6 +175,11 @@ fn handle_stop_daemon(_: Vec<serde_json::Value>) -> anyhow::Result<String> {
     };
     handle_daemon_rpc(((json!(request)).to_string(),))?;
     let _ = deconfigure_proxy();
+    let rpc_key_file = dirs::config_dir()
+        .context("Unable to get config dir")?
+        .join("geph4-credentials")
+        .join("rpc_key");
+    remove_file(rpc_key_file)?;
     eprintln!("***** DAEMON STOPPED :V *****");
 
     Ok("".into())
