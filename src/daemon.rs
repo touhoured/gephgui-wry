@@ -6,11 +6,18 @@ use tap::Tap;
 use anyhow::Context;
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
-use std::path::PathBuf;
+use std::{
+    fs::{create_dir_all, File},
+    io::Read,
+    io::Write,
+    ops::Deref,
+    path::PathBuf,
+};
 
 /// The daemon RPC key
-pub static GEPH_RPC_KEY: Lazy<String> =
-    Lazy::new(|| format!("geph-rpc-key-{}", rand::thread_rng().gen::<u128>()));
+pub static GEPH_RPC_KEY: Lazy<String> = Lazy::new(|| {
+    get_rpc_key().unwrap_or(format!("geph-rpc-key-{}", rand::thread_rng().gen::<u128>()))
+});
 
 /// Configuration for starting the daemon
 #[derive(Deserialize, Debug)]
@@ -40,6 +47,28 @@ pub static DAEMON_VERSION: Lazy<String> = Lazy::new(|| {
         .to_string()
 });
 
+fn get_rpc_key() -> anyhow::Result<String> {
+    let key_dir = dirs::config_dir().context("Unable to get config dir")?;
+    let key_path = key_dir.join("rpc_key");
+    let mut key_file = File::open(key_path)?;
+    let mut contents = String::new();
+    key_file.read_to_string(&mut contents)?;
+    Ok(contents)
+}
+
+fn set_rpc_key() -> anyhow::Result<()> {
+    let key_dir = dirs::config_dir()
+        .context("Unable to get config dir")?
+        .join("geph4-credentials");
+    if !key_dir.exists() {
+        create_dir_all(&key_dir)?;
+    }
+    let key_path = key_dir.join("rpc_key");
+    let mut key_file = File::create(key_path)?;
+    write!(key_file, "{}", GEPH_RPC_KEY.deref())?;
+    Ok(())
+}
+
 /// Returns the daemon version.
 pub fn daemon_version() -> anyhow::Result<String> {
     Ok(DAEMON_VERSION.clone())
@@ -55,7 +84,8 @@ pub fn debugpack_path() -> PathBuf {
 impl DaemonConfig {
     /// Starts the daemon, returning a death handle.
     pub fn start(self) -> anyhow::Result<std::process::Child> {
-        std::env::set_var("GEPH_RPC_KEY", GEPH_RPC_KEY.clone());
+        // std::env::set_var("GEPH_RPC_KEY", GEPH_RPC_KEY.clone());
+        set_rpc_key()?;
         let common_args = Vec::new()
             .tap_mut(|v| {
                 v.push("--exit-server".into());
