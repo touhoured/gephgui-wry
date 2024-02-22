@@ -27,7 +27,7 @@ mod fakefs;
 mod mtbus;
 mod pac;
 mod rpc_handler;
-use rpc_handler::{global_rpc_handler, RUNNING_DAEMON};
+use rpc_handler::global_rpc_handler;
 const SERVE_ADDR: &str = "127.0.0.1:5678";
 
 const WINDOW_WIDTH: i32 = 380;
@@ -60,10 +60,12 @@ fn wry_loop() -> anyhow::Result<()> {
             width: WINDOW_WIDTH,
             height: WINDOW_HEIGHT,
         })
+        .with_resizable(true)
         .with_title("Geph")
         .with_window_icon(Some(logo_icon))
         .build(&event_loop)?;
-    let initjs = include_str!("init.js");
+    eprintln!("resizable?: {}", window.is_resizable());
+    let initjs = include_str!("init.js").to_string();
 
     #[cfg(target_os = "macos")]
     // horrifying HACK
@@ -75,9 +77,6 @@ fn wry_loop() -> anyhow::Result<()> {
         .with_initialization_script(&initjs)
         .with_web_context(&mut WebContext::new(dirs::config_dir()))
         .build()?;
-
-    #[cfg(feature = "tray")]
-    let _tray = create_systray(&event_loop)?;
 
     let evt_proxy = event_loop.create_proxy();
     std::thread::spawn(move || loop {
@@ -95,15 +94,11 @@ fn wry_loop() -> anyhow::Result<()> {
                 ..
             } => {
                 tracing::info!("receiving CloseRequested event");
-                if RUNNING_DAEMON.lock().is_some() {
-                    tracing::info!("hiding the window now");
-                    webview.window().set_visible(false)
-                } else {
-                    *control_flow = ControlFlow::Exit;
-                    std::process::exit(0);
-                }
+                *control_flow = ControlFlow::Exit;
+                std::process::exit(0);
             }
             Event::RedrawRequested(_) => {
+                tracing::info!("REDRAW REQUESTED!!!!!!!!!!!!!!!!!!!!!!!");
                 webview.resize().expect("cannot resize window");
             }
             Event::MenuEvent { .. } => webview.window().set_visible(true),

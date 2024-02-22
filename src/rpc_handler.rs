@@ -2,24 +2,23 @@ use std::{
     io::{Read, Write},
     process::{Command, Stdio},
     sync::atomic::{AtomicBool, Ordering},
-    time::{SystemTime, UNIX_EPOCH},
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
 
 use crate::{
-    daemon::{debugpack_path, DaemonConfig, DAEMON_VERSION},
+    daemon::{debugpack_path, DaemonConfig, DAEMON_VERSION, GEPH_RPC_KEY},
     mtbus::mt_enqueue,
     pac::{configure_proxy, deconfigure_proxy},
     WINDOW_HEIGHT, WINDOW_WIDTH,
 };
 use anyhow::Context;
-
-use once_cell::sync::Lazy;
-use parking_lot::Mutex;
+use nanorpc::JrpcRequest;
 use serde::Deserialize;
 
+use serde_json::json;
 use tide::convert::{DeserializeOwned, Serialize};
 use wry::application::dpi::LogicalSize;
 use wry::{
@@ -31,6 +30,8 @@ use wry::{
 pub fn global_rpc_handler(_window: &Window, req: RpcRequest) -> Option<RpcResponse> {
     tracing::trace!(req = format!("{:?}", req).as_str(), "received RPC request");
     std::thread::spawn(move || {
+        let start = Instant::now();
+        let method = req.method.clone();
         let result = match req.method.as_str() {
             "echo" => handle_rpc(req, handle_echo),
             "binder_rpc" => handle_rpc(req, handle_binder_rpc),
@@ -48,6 +49,7 @@ pub fn global_rpc_handler(_window: &Window, req: RpcRequest) -> Option<RpcRespon
                 panic!("unrecognized RPC verb {}", other);
             }
         };
+        tracing::debug!("{method} took {:?}", start.elapsed());
         mt_enqueue(move |wv| wv.evaluate_script(&result).unwrap());
     });
     None
@@ -64,25 +66,22 @@ struct DaemonConfigPlus {
     proxy_autoconf: bool,
 }
 
-pub type DeathBox = Mutex<Option<DeathBoxInner>>;
-pub type DeathBoxInner = Box<dyn FnOnce() -> anyhow::Result<()> + Send + Sync + 'static>;
-
-pub static RUNNING_DAEMON: Lazy<DeathBox> = Lazy::new(Default::default);
-
 fn handle_sync(params: (String, String, bool)) -> anyhow::Result<String> {
+    println!("handle_sync {:?}", params);
     let (username, password, force) = params;
     let mut cmd = Command::new("geph4-client");
     cmd.arg("sync")
-        .arg("--username")
-        .arg(username)
-        .arg("--password")
-        .arg(password)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     if force {
         cmd.arg("--force");
     }
+    cmd.arg("auth-password")
+        .arg("--username")
+        .arg(username)
+        .arg("--password")
+        .arg(password);
     #[cfg(windows)]
     cmd.creation_flags(0x08000000);
     let mut child = cmd.spawn()?;
@@ -103,9 +102,11 @@ fn handle_sync(params: (String, String, bool)) -> anyhow::Result<String> {
 }
 
 fn handle_daemon_rpc(params: (String,)) -> anyhow::Result<String> {
-    Ok(ureq::post("http://127.0.0.1:9809")
-        .send_string(&params.0)?
-        .into_string()?)
+    Ok(
+        ureq::post(&format!("http://127.0.0.1:9809/{}", GEPH_RPC_KEY.clone()))
+            .send_string(&params.0)?
+            .into_string()?,
+    )
 }
 
 fn handle_binder_rpc(params: (String,)) -> anyhow::Result<String> {
@@ -131,33 +132,48 @@ fn handle_binder_rpc(params: (String,)) -> anyhow::Result<String> {
     Ok(s)
 }
 
-static PROXY_CONFIGURED: AtomicBool = AtomicBool::new(false);
-
 /// Handles a request to start the daemon
 fn handle_start_daemon(params: (DaemonConfigPlus,)) -> anyhow::Result<String> {
     let params = params.0;
-    if params.proxy_autoconf && !params.daemon_conf.vpn_mode {
-        configure_proxy().context("cannot configure proxy")?;
-        PROXY_CONFIGURED.store(true, Ordering::SeqCst);
+
+    let request = JrpcRequest {
+        jsonrpc: "2.0".into(),
+        method: "is_connected".into(),
+        params: [].to_vec(),
+        id: nanorpc::JrpcId::Number(1),
+    };
+
+    let conf_proxy = params.proxy_autoconf && !params.daemon_conf.vpn_mode;
+    params.daemon_conf.start().context("cannot start daemon")?;
+
+    loop {
+        match handle_daemon_rpc(((json!(request)).to_string(),)) {
+            Ok(_) => {
+                if conf_proxy {
+                    configure_proxy().context("cannot configure proxy")?;
+                }
+                break;
+            }
+            Err(_) => {}
+        };
     }
-    let mut rd = RUNNING_DAEMON.lock();
-    if rd.is_none() {
-        let daemon = params.daemon_conf.start().context("cannot start daemon")?;
-        *rd = Some(daemon);
-    }
+
     Ok("".into())
 }
 
 /// Handles a request to stop the daemon
 fn handle_stop_daemon(_: Vec<serde_json::Value>) -> anyhow::Result<String> {
-    let mut rd = RUNNING_DAEMON.lock();
-    if let Some(rd) = rd.take() {
-        eprintln!("***** STOPPING DAEMON *****");
-        rd()?;
-    }
-    if PROXY_CONFIGURED.swap(false, Ordering::SeqCst) {
-        deconfigure_proxy()?;
-    }
+    eprintln!("***** STOPPING DAEMON *****");
+    let request = JrpcRequest {
+        jsonrpc: "2.0".into(),
+        method: "kill".into(),
+        params: [].to_vec(),
+        id: nanorpc::JrpcId::Number(1),
+    };
+    handle_daemon_rpc(((json!(request)).to_string(),))?;
+    let _ = deconfigure_proxy();
+    eprintln!("***** DAEMON STOPPED :V *****");
+
     Ok("".into())
 }
 
@@ -167,12 +183,10 @@ fn handle_set_conversion_factor(params: (f64,)) -> anyhow::Result<String> {
     let factor = params.0;
     tracing::debug!(factor);
     mt_enqueue(move |webview| {
-        webview.window().set_resizable(true);
         webview.window().set_inner_size(LogicalSize {
             width: WINDOW_WIDTH as f64 * factor,
             height: WINDOW_HEIGHT as f64 * factor,
         });
-        webview.window().set_resizable(false);
     });
     Ok("".into())
 }
@@ -207,7 +221,7 @@ fn handle_rpc<I: DeserializeOwned, O: Serialize, F: FnOnce(I) -> anyhow::Result<
         Ok(res) => match f(res) {
             Err(err) => {
                 let err = format!("{:?}", err);
-                tracing::error!(
+                tracing::trace!(
                     method = req.method.as_str(),
                     err = err.as_str(),
                     "RPC call returned error"

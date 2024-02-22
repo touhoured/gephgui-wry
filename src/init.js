@@ -34,7 +34,6 @@ window["NATIVE_GATE"] = {
     }
   },
   async stop_daemon() {
-    await this.daemon_rpc("kill", []);
     await window.rpc.call("stop_daemon", []);
   },
   async is_connected() {
@@ -70,7 +69,7 @@ window["NATIVE_GATE"] = {
     if (resp.error) {
       throw resp.error.message;
     }
-    console.log("DAEMON RESULT", resp);
+//    console.log("DAEMON RESULT", resp);
     return resp.result;
   },
 
@@ -104,6 +103,7 @@ window["NATIVE_GATE"] = {
   supports_app_whitelist: false,
   supports_prc_whitelist: true,
   supports_proxy_conf: true,
+  supports_listen_all: true,
   supports_vpn_conf: true,
   supports_autoupdate: true,
   async get_native_info() {
